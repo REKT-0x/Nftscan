@@ -1,12 +1,11 @@
 import streamlit as st
 import json
 import os
-from web3 import Web3
 
 st.set_page_config(page_title="NFT Sniper Dashboard", page_icon="🛡️")
 
-st.title("🛡️ Personal NFT Floor Sniper")
-st.write("Cross-chain NFT contract watcher using direct blockchain connections.")
+st.title("🛡️ Personal NFT Watchlist")
+st.write("Manage your cross-chain tracking cleanly and securely.")
 
 # --- PASSWORD ---
 DEFAULT_PASSWORD = "mypassword123"
@@ -28,19 +27,16 @@ if os.path.exists(WATCHFILE):
 else:
     watchlist = []
 
-st.subheader("📋 Add Collection Contract")
+st.subheader("📋 Add to Watchlist")
 
 with st.form("add_form"):
-    name_input = st.text_input("Project Name (e.g., ApeChain Project)")
-    
-    # Fully supported networks including ApeChain RPC mapping
+    name_input = st.text_input("Project Name (e.g., Cool Ape Project)")
     network_input = st.selectbox(
         "Select Network", 
-        ["Ethereum", "Base", "ApeChain", "Arbitrum", "Polygon"]
+        ["ApeChain", "Ethereum", "Base", "Arbitrum", "Polygon"]
     )
-    
     contract_input = st.text_input("Contract Address (0x...)")
-    submit = st.form_submit_button("Add to Watchlist")
+    submit = st.form_submit_button("Save Project")
 
     if submit and name_input and contract_input:
         watchlist.append({
@@ -50,41 +46,23 @@ with st.form("add_form"):
         })
         with open(WATCHFILE, "w") as f:
             json.dump(watchlist, f, indent=4)
-        st.success(f"Added {name_input}! (Commit changes to GitHub to save permanently)")
+        st.success(f"Added {name_input} successfully!")
 
 st.divider()
 
-st.subheader("📊 Watchlist Status")
+st.subheader("📊 Your Saved Watchlist")
 
-# Public RPC endpoints for direct chain connection (No API keys needed)
-RPC_URLS = {
-    "Ethereum": "https://cloudflare-eth.com",
-    "Base": "https://mainnet.base.org",
-    "ApeChain": "https://rpc.apechain.com/http",
-    "Arbitrum": "https://arb1.arbitrum.io/rpc",
-    "Polygon": "https://polygon-rpc.com"
-}
-
-if st.button("Verify Contracts Now"):
-    if not watchlist:
-        st.info("Your watchlist is empty.")
-    else:
-        for item in watchlist:
-            net = item["network"]
-            addr = item["contract"]
-            name = item["name"]
-            
-            rpc = RPC_URLS.get(net)
-            w3 = Web3(Web3.HTTPProvider(rpc))
-            
-            if w3.is_connected():
-                # Verify contract exists on-chain
-                code = w3.eth.get_code(Web3.to_checksum_address(addr))
-                if len(code) > 2:
-                    st.success(f"✅ **{name}** ({net}): Contract verified live on-chain!")
-                else:
-                    st.error(f"❌ **{name}** ({net}): No smart contract found at this address.")
-            else:
-                st.error(f"Connection failed for network: {net}")
+if not watchlist:
+    st.info("Your watchlist is currently empty.")
 else:
-    st.info("Click the button to ping the blockchains and verify your saved contracts.")
+    for idx, item in enumerate(watchlist):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(f"**{item['name']}** ({item['network']})")
+            st.caption(f"`{item['contract']}`")
+        with col2:
+            if st.button("Delete", key=f"del_{idx}"):
+                watchlist.pop(idx)
+                with open(WATCHFILE, "w") as f:
+                    json.dump(watchlist, f, indent=4)
+                st.rerun()
