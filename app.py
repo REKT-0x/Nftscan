@@ -21,15 +21,27 @@ st.divider()
 # --- WATCHLIST FILE ---
 WATCHFILE = "watchlist.json"
 
+# Safe loading with error handling for old/corrupted formats
+watchlist = []
 if os.path.exists(WATCHFILE):
-    with open(WATCHFILE, "r") as f:
-        watchlist = json.load(f)
-else:
-    watchlist = []
+    try:
+        with open(WATCHFILE, "r") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                for item in data:
+                    # Ensure all required keys exist to prevent KeyErrors
+                    if isinstance(item, dict) and "contract" in item:
+                        watchlist.append({
+                            "name": item.get("name", "Unknown Project"),
+                            "network": item.get("network", item.get("chain", "Ethereum")),
+                            "contract": item.get("contract")
+                        })
+    except Exception:
+        watchlist = []
 
 st.subheader("📋 Add to Watchlist")
 
-with st.form("add_form"):
+with st.form("add_form", clear_on_submit=True):
     name_input = st.text_input("Project Name (e.g., Cool Ape Project)")
     network_input = st.selectbox(
         "Select Network", 
@@ -47,6 +59,7 @@ with st.form("add_form"):
         with open(WATCHFILE, "w") as f:
             json.dump(watchlist, f, indent=4)
         st.success(f"Added {name_input} successfully!")
+        st.rerun()
 
 st.divider()
 
@@ -58,8 +71,8 @@ else:
     for idx, item in enumerate(watchlist):
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown(f"**{item['name']}** ({item['network']})")
-            st.caption(f"`{item['contract']}`")
+            st.markdown(f"**{item.get('name', 'Unnamed')}** ({item.get('network', 'Ethereum')})")
+            st.caption(f"`{item.get('contract', '')}`")
         with col2:
             if st.button("Delete", key=f"del_{idx}"):
                 watchlist.pop(idx)
